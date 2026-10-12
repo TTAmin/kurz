@@ -108,7 +108,7 @@ jobs:
           name: image
           path: ${{ runner.temp }}
       - name: Trivy image scan (report)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           input: ${{ runner.temp }}/image.tar
           format: sarif
@@ -121,14 +121,14 @@ jobs:
           sarif_file: trivy-image.sarif
           category: trivy-image
       - name: Trivy image scan (gate on fixable criticals)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           input: ${{ runner.temp }}/image.tar
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: "1"
       - name: Trivy misconfiguration scan (Dockerfile, Helm, Terraform)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: config
           scan-ref: .
