@@ -76,7 +76,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_requests_total{job=\"kurz\",route!~\"/healthz|/readyz|/metrics|/favicon.ico\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{job=\"kurz\",route!~\"/healthz|/readyz|/metrics|/favicon.ico\"}[5m])), 1e-9)",
+          "expr": "(sum(rate(http_requests_total{job=\"kurz\",route!~\"/healthz|/readyz|/metrics|/favicon.ico\",status=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(rate(http_requests_total{job=\"kurz\",route!~\"/healthz|/readyz|/metrics|/favicon.ico\"}[5m])), 1e-9)",
           "legendFormat": ""
         }
       ],
@@ -128,7 +128,7 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "none",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -171,7 +171,7 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "none",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -263,8 +263,9 @@
           },
           "custom": {
             "thresholdsStyle": {
-              "mode": "line+area"
-            }
+              "mode": "dashed"
+            },
+            "axisSoftMax": 0.3
           }
         },
         "overrides": []
