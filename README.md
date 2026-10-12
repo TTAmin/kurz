@@ -57,6 +57,7 @@ passed between jobs as an artifact, never rebuilt.
 docker compose up --build
 ```
 
+- Shorten a link in the browser: http://localhost:8000
 - API and interactive docs: http://localhost:8000/docs
 - Prometheus: http://localhost:9090 (alerts under *Alerts*)
 - Grafana: http://localhost:3000 (dashboard *kurz* opens as the home page)
@@ -118,6 +119,7 @@ SSH itself only from the CIDR you configure.
 
 | Method | Path | |
 | --- | --- | --- |
+| `GET` | `/` | A page with a form: paste a long link, get a short one |
 | `POST` | `/api/links` | Create a link: `{"url": "...", "code": "optional-custom"}` |
 | `GET` | `/api/links/{code}` | Link details and click count |
 | `GET` | `/{code}` | 307 redirect to the target |
@@ -200,9 +202,11 @@ Without `KURZ_DATABASE_URL` the app uses a local SQLite file.
 
 ## Roadmap
 
+- **Before exposing it publicly:** an API key for creating links, and rate limiting. Today
+  anyone who can reach the app can create links, which is fine on a laptop and an open door
+  for spam and phishing links on the internet. Redirects stay public either way.
 - Alembic migrations, run as a Kubernetes Job before each rollout
 - GitOps deployment with Argo CD
-- Rate limiting per client
 - OpenTelemetry tracing
 
 ## License

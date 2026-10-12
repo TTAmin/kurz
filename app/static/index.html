@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>kurz</title>
+  <style>
+    :root {
+      --bg: #f6f7f9; --card: #ffffff; --text: #1b1f24; --muted: #5b6470;
+      --border: #d5d9df; --accent: #1f6feb; --accent-text: #ffffff;
+      --ok-bg: #e9f5ee; --ok-border: #9fd3b2; --err-bg: #fdecec; --err-border: #f0a8a8;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f1216; --card: #171b21; --text: #e6e9ed; --muted: #9aa4b0;
+        --border: #2c333c; --accent: #4c8dff; --accent-text: #0b0d10;
+        --ok-bg: #12261a; --ok-border: #2f6b45; --err-bg: #2a1414; --err-border: #7a3434;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px;
+      background: var(--bg); color: var(--text);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    main {
+      width: 100%; max-width: 560px; background: var(--card);
+      border: 1px solid var(--border); border-radius: 12px; padding: 28px;
+    }
+    h1 { margin: 0 0 4px; font-size: 28px; letter-spacing: -0.02em; }
+    p.lead { margin: 0 0 24px; color: var(--muted); }
+    label { display: block; font-weight: 600; margin: 16px 0 6px; }
+    label small { font-weight: 400; color: var(--muted); }
+    input {
+      width: 100%; padding: 10px 12px; font: inherit; color: var(--text);
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    }
+    input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    button {
+      font: inherit; font-weight: 600; cursor: pointer; border-radius: 8px;
+      padding: 10px 16px; border: 1px solid var(--accent);
+      background: var(--accent); color: var(--accent-text);
+    }
+    button:disabled { opacity: 0.6; cursor: progress; }
+    form > button { width: 100%; margin-top: 20px; }
+    #result, #error { margin-top: 20px; padding: 14px; border-radius: 8px; }
+    #result { background: var(--ok-bg); border: 1px solid var(--ok-border); }
+    #error { background: var(--err-bg); border: 1px solid var(--err-border); }
+    .row { display: flex; gap: 8px; align-items: center; }
+    .row a { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: 600; color: var(--accent); }
+    .row button { background: transparent; color: var(--accent); padding: 6px 12px; }
+    .target { margin: 8px 0 0; color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+    footer { margin-top: 24px; font-size: 14px; color: var(--muted); }
+    footer a { color: inherit; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>kurz</h1>
+    <p class="lead">Paste a long link, get a short one.</p>
+
+    <form id="shorten">
+      <label for="url">Long link</label>
+      <input id="url" name="url" type="url" required placeholder="https://example.com/a/very/long/path" autofocus>
+
+      <label for="code">Custom code <small>(optional, 3 to 32 letters, digits, - or _)</small></label>
+      <input id="code" name="code" pattern="[A-Za-z0-9_\-]{3,32}" placeholder="my-link">
+
+      <button type="submit">Shorten</button>
+    </form>
+
+    <div id="result" hidden>
+      <div class="row">
+        <a id="short" href="#" target="_blank" rel="noopener"></a>
+        <button id="copy" type="button">Copy</button>
+      </div>
+      <p class="target">→ <span id="target"></span></p>
+    </div>
+    <div id="error" role="alert" hidden></div>
+
+    <footer>Clicks and details: <code>/api/links/&lt;code&gt;</code> · <a href="/docs">API docs</a></footer>
+  </main>
+
+  <script>
+    const form = document.getElementById("shorten");
+    const button = form.querySelector("button");
+    const result = document.getElementById("result");
+    const error = document.getElementById("error");
+    const shortLink = document.getElementById("short");
+
+    function showError(message) {
+      result.hidden = true;
+      error.textContent = message; // textContent, never innerHTML: the server echoes user input
+      error.hidden = false;
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const body = { url: form.url.value.trim() };
+      if (form.code.value.trim()) body.code = form.code.value.trim();
+
+      button.disabled = true;
+      error.hidden = true;
+      try {
+        const resp = await fetch("/api/links", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (resp.ok) {
+          shortLink.textContent = data.short_url;
+          shortLink.href = data.short_url;
+          document.getElementById("target").textContent = data.target_url;
+          result.hidden = false;
+          form.code.value = "";
+        } else if (resp.status === 409) {
+          showError("That code is already taken. Pick another one or leave it empty.");
+        } else if (resp.status === 422) {
+          // A string detail is our own message ("'healthz' is reserved"); a list is
+          // pydantic's field validation.
+          showError(typeof data.detail === "string"
+            ? data.detail
+            : "Please enter a valid http(s) link, and a code of 3 to 32 letters, digits, - or _.");
+        } else if (resp.status === 503) {
+          showError("The service is temporarily unavailable. Try again in a few seconds.");
+        } else {
+          showError(`Something went wrong (HTTP ${resp.status}).`);
+        }
+      } catch {
+        showError("Could not reach the server.");
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.getElementById("copy").addEventListener("click", async (event) => {
+      try {
+        await navigator.clipboard.writeText(shortLink.href);
+        event.target.textContent = "Copied";
+        setTimeout(() => (event.target.textContent = "Copy"), 1500);
+      } catch {
+        event.target.textContent = "Select and copy";
+      }
+    });
+  </script>
+</body>
+</html>

@@ -106,3 +106,14 @@ def test_favicon_never_touches_the_database(tmp_path):
     client = TestClient(app)
     assert client.get("/favicon.ico").status_code == 204
     app.state.engine.dispose()
+
+
+def test_start_page_works_without_the_database(tmp_path):
+    missing_dir = tmp_path / "does-not-exist" / "db.sqlite"
+    app = create_app(Settings(database_url=f"sqlite:///{missing_dir}", db_connect_timeout_seconds=0))
+    resp = TestClient(app).get("/")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/html")
+    assert '<form id="shorten">' in resp.text
+    assert 'fetch("/api/links"' in resp.text
+    app.state.engine.dispose()
