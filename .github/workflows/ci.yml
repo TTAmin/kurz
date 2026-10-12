@@ -32,8 +32,8 @@ jobs:
           --health-cmd "pg_isready -U kurz"
           --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
           cache: pip
@@ -52,8 +52,8 @@ jobs:
     name: Lint Helm, Terraform, Prometheus
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: azure/setup-helm@v4
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
       - name: Helm lint and schema validation
         run: |
           helm lint deploy/helm/kurz
@@ -62,7 +62,7 @@ jobs:
             | tar xz kubeconform
           helm template kurz deploy/helm/kurz --set ingress.enabled=true,autoscaling.enabled=true \
             | ./kubeconform -strict -summary
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
       - name: Terraform fmt and validate
         working-directory: infra/terraform/aws
         run: |
@@ -79,16 +79,16 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
         with:
           context: .
           tags: ${{ env.LOCAL_IMAGE }}
           outputs: type=docker,dest=${{ runner.temp }}/image.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: image
           path: ${{ runner.temp }}/image.tar
@@ -102,8 +102,8 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: image
           path: ${{ runner.temp }}
@@ -116,7 +116,7 @@ jobs:
           severity: HIGH,CRITICAL
       - name: Upload to GitHub code scanning
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-image.sarif
           category: trivy-image
@@ -141,8 +141,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: image
           path: ${{ runner.temp }}
@@ -150,7 +150,7 @@ jobs:
       - uses: helm/kind-action@v1
         with:
           cluster_name: kurz
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5
       - name: Load image into kind
         run: kind load docker-image "$LOCAL_IMAGE" --name kurz
       - name: Helm install
@@ -188,12 +188,12 @@ jobs:
       packages: write
       id-token: write # keyless cosign signing
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: image
           path: ${{ runner.temp }}
       - run: docker load -i "${{ runner.temp }}/image.tar"
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
