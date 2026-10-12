@@ -4,9 +4,10 @@ import string
 import time
 from collections.abc import Iterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response, status
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy import select, text, update
 from sqlalchemy.exc import IntegrityError, OperationalError
@@ -26,6 +27,9 @@ ALPHABET = string.ascii_letters + string.digits
 # Paths the app serves itself; a short code with one of these names could never be reached.
 RESERVED_CODES = {"api", "healthz", "readyz", "metrics", "docs", "redoc", "openapi.json", "favicon.ico"}
 
+# Read once at import: the page is static, and the image's filesystem is read-only anyway.
+START_PAGE = (Path(__file__).parent / "static" / "index.html").read_text(encoding="utf-8")
+
 router = APIRouter()
 
 
@@ -42,6 +46,12 @@ def to_out(link: Link, settings: Settings) -> LinkOut:
         clicks=link.clicks,
         created_at=link.created_at,
     )
+
+
+@router.get("/", response_class=HTMLResponse, include_in_schema=False)
+def start_page() -> str:
+    """A form for people; it calls POST /api/links like any other client."""
+    return START_PAGE
 
 
 @router.get("/healthz", tags=["ops"])
