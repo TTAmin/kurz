@@ -16,6 +16,11 @@ scanned, shipped, deployed and observed.
 | Observability | Prometheus metrics, JSON logs, Grafana dashboard, alert rules |
 | Supply chain | Trivy (image + IaC), Dependabot, pinned dependencies, Cosign signatures |
 
+![The Grafana dashboard of the local stack under generated demo traffic: request rate, error ratio, links created, redirects, requests by route, p95 latency with the 250 ms alert line, responses by status](docs/grafana-dashboard.webp)
+
+*The Grafana dashboard from `docker compose up`, under generated demo traffic. The dashed line
+in the latency chart is the alert threshold.*
+
 ## Architecture
 
 ```mermaid
