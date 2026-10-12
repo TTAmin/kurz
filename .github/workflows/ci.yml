@@ -164,10 +164,10 @@ jobs:
         run: |
           kubectl port-forward svc/kurz 8080:80 >/dev/null 2>&1 &
           bash scripts/smoke-test.sh http://localhost:8080
-      - name: Rolling update keeps serving
+      - name: Zero-downtime rolling update
+        run: bash scripts/rollout-test.sh kurz deploy/helm/kurz
+      - name: Smoke test after the update
         run: |
-          helm upgrade kurz deploy/helm/kurz --reuse-values --set logLevel=DEBUG --wait --timeout 3m
-          kubectl rollout status deployment/kurz
           pkill -f "kubectl port-forward" || true
           kubectl port-forward svc/kurz 8080:80 >/dev/null 2>&1 &
           bash scripts/smoke-test.sh http://localhost:8080
