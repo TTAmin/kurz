@@ -48,7 +48,7 @@
     },
     {
       "id": 2,
-      "title": "5xx error ratio",
+      "title": "5xx error ratio (user traffic)",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -67,7 +67,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_requests_total{job=\"kurz\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{job=\"kurz\"}[5m])), 1e-9)",
+          "expr": "sum(rate(http_requests_total{job=\"kurz\",route!~\"/healthz|/readyz|/metrics|/favicon.ico\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{job=\"kurz\",route!~\"/healthz|/readyz|/metrics|/favicon.ico\"}[5m])), 1e-9)",
           "legendFormat": ""
         }
       ],

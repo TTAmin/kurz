@@ -6,10 +6,10 @@ from collections.abc import Iterator
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy import select, text, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from app import __version__
@@ -24,7 +24,7 @@ log = logging.getLogger("kurz")
 
 ALPHABET = string.ascii_letters + string.digits
 # Paths the app serves itself; a short code with one of these names could never be reached.
-RESERVED_CODES = {"api", "healthz", "readyz", "metrics", "docs", "redoc", "openapi.json"}
+RESERVED_CODES = {"api", "healthz", "readyz", "metrics", "docs", "redoc", "openapi.json", "favicon.ico"}
 
 router = APIRouter()
 
@@ -64,6 +64,13 @@ def readyz(db: Session = Depends(get_db)) -> dict:
 @router.get("/metrics", tags=["ops"], include_in_schema=False)
 def metrics() -> Response:
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+@router.get("/favicon.ico", include_in_schema=False)
+def favicon() -> Response:
+    """Browsers ask for it on every page; without this it would hit the redirect
+    route and cost a database lookup (and fail with the database down)."""
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/api/links", status_code=status.HTTP_201_CREATED, response_model=LinkOut, tags=["links"])
@@ -126,7 +133,7 @@ def follow(code: str, db: Session = Depends(get_db)) -> RedirectResponse:
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level)
-    engine = make_engine(settings.database_url)
+    engine = make_engine(settings.database_url, settings.db_attempt_timeout_seconds)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -138,6 +145,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.engine = engine
     app.state.session_factory = sessionmaker(engine, expire_on_commit=False)
+
+    @app.exception_handler(OperationalError)
+    async def database_unavailable(request: Request, exc: OperationalError) -> JSONResponse:
+        # A lost database is an outage, not a bug in this code: 503 tells clients and
+        # load balancers to come back later, and one log line replaces a traceback.
+        log.warning("database unavailable: %s", exc.orig)
+        return JSONResponse(
+            {"detail": "database unavailable"},
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            headers={"Retry-After": "5"},
+        )
 
     @app.middleware("http")
     async def observe(request: Request, call_next):

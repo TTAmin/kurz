@@ -12,7 +12,12 @@ class Settings(BaseSettings):
     base_url: str = "http://localhost:8000"
     code_length: int = 7
     log_level: str = "INFO"
+    # How long startup waits for the database to come up at all.
     db_connect_timeout_seconds: float = 60.0
+    # How long one connection attempt may take before it fails. Without it a database
+    # host that does not answer blocks a request until the OS gives up (21 s measured
+    # under Docker Desktop, about two minutes on Linux). libpq needs whole seconds, at least 2.
+    db_attempt_timeout_seconds: int = 2
 
 
 @lru_cache

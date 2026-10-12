@@ -78,6 +78,8 @@ jobs:
         run: |
           docker run --rm -v "$PWD/monitoring:/m:ro" --entrypoint promtool prom/prometheus:v2.55.1 \
             check config /m/prometheus.yml
+          docker run --rm -v "$PWD/monitoring:/m:ro" --entrypoint promtool prom/prometheus:v2.55.1 \
+            test rules /m/alerts.test.yml
 
   build:
     name: Build image
