@@ -8,7 +8,8 @@ ENV PIP_NO_CACHE_DIR=1 \
 
 RUN python -m venv /venv
 COPY requirements.txt .
-RUN /venv/bin/pip install -r requirements.txt
+RUN /venv/bin/pip install -r requirements.txt \
+    && /venv/bin/pip uninstall -y pip
 
 # --- runtime stage: only the virtualenv and the app, no build tooling ----------
 FROM python:3.14-slim
@@ -17,7 +18,10 @@ ENV PATH="/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin kurz
+# No package manager at runtime: nothing to install tools with, and no copies of
+# the libraries pip vendors (urllib3, msgpack, ...) for the scanner to flag.
+RUN python -m pip uninstall -y --root-user-action=ignore pip \
+    && useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin kurz
 
 WORKDIR /app
 COPY --from=build /venv /venv
