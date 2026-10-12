@@ -1,0 +1,11 @@
+kurz {{ .Chart.AppVersion }} is deployed as release "{{ .Release.Name }}".
+
+Try it:
+  kubectl port-forward svc/{{ include "kurz.fullname" . }} 8080:{{ .Values.service.port }}
+  curl -X POST localhost:8080/api/links -H 'content-type: application/json' -d '{"url":"https://example.com"}'
+
+API docs: http://localhost:8080/docs
+{{- if .Values.postgresql.enabled }}
+
+Note: the bundled Postgres is for local and demo use only.
+{{- end }}

@@ -1,0 +1,31 @@
+groups:
+  - name: kurz
+    rules:
+      - alert: KurzDown
+        expr: up{job="kurz"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "kurz instance {{ $labels.instance }} is down"
+
+      - alert: KurzHighErrorRate
+        expr: |
+          sum(rate(http_requests_total{job="kurz", status=~"5.."}[5m]))
+            / sum(rate(http_requests_total{job="kurz"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "More than 5% of requests fail with a 5xx"
+
+      - alert: KurzSlowRedirects
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_request_duration_seconds_bucket{job="kurz", route="/{code}"}[5m]))
+          ) > 0.25
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 redirect latency above 250 ms"

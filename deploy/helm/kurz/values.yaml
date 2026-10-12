@@ -1,0 +1,71 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/ttamin/kurz
+  # Defaults to the chart's appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# Public base URL used to build the short links the API returns.
+baseUrl: http://localhost:8080
+logLevel: INFO
+
+database:
+  # Used when postgresql.enabled is false. Better: point existingSecret at a Secret
+  # (e.g. created by External Secrets) that holds a DATABASE_URL key.
+  url: ""
+  existingSecret: ""
+
+# A single-instance Postgres for local and demo clusters. Not for production:
+# no backups, no replication. Use a managed database there.
+postgresql:
+  enabled: true
+  image: postgres:16-alpine
+  auth:
+    username: kurz
+    password: kurz
+    database: kurz
+  storage: 1Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  annotations: {}
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 96Mi
+  limits:
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Needs the Prometheus Operator CRDs (e.g. kube-prometheus-stack).
+serviceMonitor:
+  enabled: false
+  interval: 30s
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
