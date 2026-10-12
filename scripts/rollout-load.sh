@@ -13,12 +13,16 @@ end=$(( $(date +%s) + DURATION ))
 ok=0
 fail=0
 while [ "$(date +%s)" -lt "$end" ]; do
-  status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 "$BASE/$code" || true)
-  if [ "$status" = "307" ]; then
+  # curl exit codes tell failures apart: 7 refused (no pod listening), 28 timeout,
+  # 6 name not resolved, 52/56 connection dropped mid-request.
+  out=$(curl -s -o /dev/null --max-time 2 \
+    -w '%{http_code} dns=%{time_namelookup}s connect=%{time_connect}s' "$BASE/$code")
+  rc=$?
+  if [ "$rc" -eq 0 ] && [ "${out%% *}" = "307" ]; then
     ok=$((ok + 1))
   else
     fail=$((fail + 1))
-    echo "$(date +%T) failed: status=$status"
+    echo "$(date +%T) failed: curl_exit=$rc status=$out"
   fi
   sleep 0.05
 done
