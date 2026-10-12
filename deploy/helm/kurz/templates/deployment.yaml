@@ -32,6 +32,8 @@ spec:
         {{- end }}
     spec:
       automountServiceAccountToken: false
+      # The preStop delay counts against this budget; the rest is for draining.
+      terminationGracePeriodSeconds: {{ add .Values.shutdownDelaySeconds 25 }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
@@ -77,6 +79,13 @@ spec:
               path: /readyz
               port: http
             periodSeconds: 5
+          # Kubernetes sends SIGTERM and removes the pod from the Service at the same
+          # time, but the endpoint change needs a moment to reach every node. Keep
+          # serving until it has, then let uvicorn drain in-flight requests.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "{{ .Values.shutdownDelaySeconds }}"]
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
