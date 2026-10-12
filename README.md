@@ -136,8 +136,13 @@ following the twelve-factor model.
   a count.
 - **Hardened pods.** Non-root UID, read-only root filesystem, all capabilities dropped,
   seccomp `RuntimeDefault`, no service account token mounted.
-- **Zero-downtime rollouts.** `maxUnavailable: 0`, a readiness gate and a PodDisruptionBudget;
-  CI proves it by running the smoke test again after a `helm upgrade`.
+- **Zero-downtime rollouts.** `maxUnavailable: 0`, a readiness gate and a PodDisruptionBudget
+  cover new pods; a `preStop` delay covers old ones. Kubernetes sends SIGTERM and removes a pod
+  from the Service at the same moment, and the endpoint change needs a moment to reach every
+  node, so without the delay traffic still arrives at a pod that has stopped listening. CI
+  proves it: a pod inside the cluster follows a link every 50 ms through the Service while
+  `helm upgrade` replaces every pod, and a single failed request fails the build. Without the
+  delay that test lost 6 and 10 of about 1,400 requests in two runs.
 - **Scans gate on what can be fixed.** The pipeline fails on critical image vulnerabilities
   that have a fix, and on any HIGH or CRITICAL misconfiguration in the Dockerfile, the Helm
   chart or the Terraform code. Accepted exceptions live in [`.trivyignore`](.trivyignore),

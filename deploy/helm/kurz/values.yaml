@@ -56,6 +56,10 @@ autoscaling:
   maxReplicas: 6
   targetCPUUtilizationPercentage: 70
 
+# Seconds a terminating pod keeps serving before shutdown starts (preStop), so
+# every node has stopped routing to it first. Rollouts then lose no requests.
+shutdownDelaySeconds: 5
+
 podDisruptionBudget:
   enabled: true
   minAvailable: 1
