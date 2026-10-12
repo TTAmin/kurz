@@ -138,8 +138,12 @@ following the twelve-factor model.
   seccomp `RuntimeDefault`, no service account token mounted.
 - **Zero-downtime rollouts.** `maxUnavailable: 0`, a readiness gate and a PodDisruptionBudget;
   CI proves it by running the smoke test again after a `helm upgrade`.
-- **Scans gate on what can be fixed.** The pipeline fails on critical vulnerabilities that
-  have a fix; everything HIGH and above is reported to GitHub code scanning.
+- **Scans gate on what can be fixed.** The pipeline fails on critical image vulnerabilities
+  that have a fix, and on any HIGH or CRITICAL misconfiguration in the Dockerfile, the Helm
+  chart or the Terraform code. Accepted exceptions live in [`.trivyignore`](.trivyignore),
+  each with its reason. Image findings from HIGH up are reported to GitHub code scanning.
+- **Third-party actions that see the code are pinned by commit SHA**, not by tag: a tag can
+  be re-pointed to other code, as happened to `trivy-action`'s tags in March 2026.
 
 ## Project layout
 

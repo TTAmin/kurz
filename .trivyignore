@@ -1,0 +1,7 @@
+# Accepted findings. Each one needs a reason; review them when the setup changes.
+
+# infra/terraform/aws: unrestricted egress. The instance installs k3s and Helm and
+# pulls container images from several registries at boot and on every deploy;
+# there is no fixed set of destinations to allow-list without a NAT/proxy setup
+# that would multiply the cost of a demo environment.
+AWS-0104

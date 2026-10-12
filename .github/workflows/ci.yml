@@ -133,6 +133,8 @@ jobs:
           scan-type: config
           scan-ref: .
           severity: HIGH,CRITICAL
+          trivyignores: .trivyignore
+          exit-code: "1"
 
   e2e:
     name: Deploy to kind & smoke test
