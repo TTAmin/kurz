@@ -133,6 +133,16 @@ following the twelve-factor model.
 - **Liveness and readiness are different questions.** `/healthz` never touches the database:
   if Postgres goes down, restarting every app pod would not help and would only add load.
   `/readyz` does check it, so pods stop receiving traffic instead.
+- **A database outage is a 503, not a 500.** A 500 says "bug in this code"; a lost database
+  is an outage, and 503 with `Retry-After` tells clients and load balancers to come back later.
+  One warning line replaces a traceback per request. Each connection attempt gives up after
+  2 s: a database host that does not answer otherwise blocked a request for 21 s (measured
+  under Docker Desktop; about two minutes on Linux).
+- **Alerts ignore noise and are unit-tested.** The error ratio counts user traffic only (not
+  health checks or scrapes) and needs at least 5 failures in 5 minutes; the latency alert needs
+  20 redirects before a 95th percentile means anything. Found in a manual outage test, where a
+  browser's two `favicon.ico` requests sent both alerts to pending. `monitoring/alerts.test.yml`
+  replays that case and two real outages; CI runs it with `promtool test rules`.
 - **Metrics are labelled by route template, not by path.** `route="/{code}"`, never
   `route="/aZ3kQ9x"`: one label value per short link would grow Prometheus' memory without
   bound. A test guards this.

@@ -1,0 +1,71 @@
+# Unit tests for the alert rules: promtool test rules monitoring/alerts.test.yml
+# Series values use promtool's expanding notation: 'a+bxN' is a, a+b, ... (N steps).
+
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 15s
+
+tests:
+  # What happened in a manual outage test: the database was stopped, nobody used the
+  # service, and a browser's two favicon requests failed slowly. Health checks and
+  # scrapes made up the rest of the traffic. Nothing here should even go pending.
+  - name: two stray failures with no real traffic
+    interval: 1m
+    input_series:
+      - series: 'http_requests_total{job="kurz", method="GET", route="/healthz", status="200"}'
+        values: '0+2x20'
+      - series: 'http_requests_total{job="kurz", method="GET", route="/metrics", status="200"}'
+        values: '0+4x20'
+      - series: 'http_requests_total{job="kurz", method="GET", route="/{code}", status="500"}'
+        values: '0x9 2x11'
+      - series: 'http_request_duration_seconds_bucket{job="kurz", method="GET", route="/{code}", le="0.25"}'
+        values: '0x20'
+      - series: 'http_request_duration_seconds_bucket{job="kurz", method="GET", route="/{code}", le="2.5"}'
+        values: '0x20'
+      - series: 'http_request_duration_seconds_bucket{job="kurz", method="GET", route="/{code}", le="+Inf"}'
+        values: '0x9 2x11'
+      - series: 'http_request_duration_seconds_count{job="kurz", method="GET", route="/{code}"}'
+        values: '0x9 2x11'
+    promql_expr_test:
+      - expr: ALERTS
+        eval_time: 12m
+        exp_samples: []
+
+  # A real outage under real traffic: 10 redirects a second, all failing from minute 10.
+  - name: real outage under traffic
+    interval: 1m
+    input_series:
+      - series: 'http_requests_total{job="kurz", method="GET", route="/{code}", status="307"}'
+        values: '0+600x10 6000x10'
+      - series: 'http_requests_total{job="kurz", method="GET", route="/{code}", status="503"}'
+        values: '0x10 600+600x9'
+    alert_rule_test:
+      - alertname: KurzHighErrorRate
+        eval_time: 20m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "More than 5% of user requests fail with a 5xx"
+
+  # Slow redirects under real traffic: 2 a second, all taking about a second.
+  - name: slow redirects under traffic
+    interval: 1m
+    input_series:
+      - series: 'http_request_duration_seconds_bucket{job="kurz", method="GET", route="/{code}", le="0.25"}'
+        values: '0x25'
+      - series: 'http_request_duration_seconds_bucket{job="kurz", method="GET", route="/{code}", le="2.5"}'
+        values: '0+120x25'
+      - series: 'http_request_duration_seconds_bucket{job="kurz", method="GET", route="/{code}", le="+Inf"}'
+        values: '0+120x25'
+      - series: 'http_request_duration_seconds_count{job="kurz", method="GET", route="/{code}"}'
+        values: '0+120x25'
+    alert_rule_test:
+      - alertname: KurzSlowRedirects
+        eval_time: 25m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "p95 redirect latency above 250 ms"

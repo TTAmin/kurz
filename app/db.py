@@ -15,10 +15,12 @@ class Base(DeclarativeBase):
     pass
 
 
-def make_engine(url: str) -> Engine:
+def make_engine(url: str, attempt_timeout_seconds: int = 2) -> Engine:
     kwargs: dict = {"pool_pre_ping": True}
     if url.startswith("sqlite"):
         kwargs["connect_args"] = {"check_same_thread": False}
+    elif url.startswith("postgresql"):
+        kwargs["connect_args"] = {"connect_timeout": attempt_timeout_seconds}
     return create_engine(url, **kwargs)
 
 

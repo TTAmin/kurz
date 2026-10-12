@@ -79,3 +79,30 @@ def test_readiness_fails_without_database(tmp_path):
     assert client.get("/healthz").status_code == 200
     assert client.get("/readyz").status_code == 503
     app.state.engine.dispose()
+
+
+def test_database_outage_is_a_503_not_a_500(tmp_path):
+    missing_dir = tmp_path / "does-not-exist" / "db.sqlite"
+    app = create_app(Settings(database_url=f"sqlite:///{missing_dir}", db_connect_timeout_seconds=0))
+    client = TestClient(app)  # no lifespan: the database is "down" from the start
+
+    for resp in (
+        client.get("/someCode", follow_redirects=False),
+        client.get("/api/links/someCode"),
+        client.post("/api/links", json={"url": "https://example.com"}),
+    ):
+        assert resp.status_code == 503
+        assert resp.headers["retry-after"] == "5"
+        assert resp.json() == {"detail": "database unavailable"}
+
+    metrics = client.get("/metrics").text
+    assert 'route="/{code}",status="503"' in metrics
+    app.state.engine.dispose()
+
+
+def test_favicon_never_touches_the_database(tmp_path):
+    missing_dir = tmp_path / "does-not-exist" / "db.sqlite"
+    app = create_app(Settings(database_url=f"sqlite:///{missing_dir}", db_connect_timeout_seconds=0))
+    client = TestClient(app)
+    assert client.get("/favicon.ico").status_code == 204
+    app.state.engine.dispose()

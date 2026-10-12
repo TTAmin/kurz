@@ -17,3 +17,10 @@ def test_init_db_is_idempotent(tmp_path):
     init_db(engine, timeout_seconds=1.0)
     init_db(engine, timeout_seconds=1.0)
     engine.dispose()
+
+
+def test_postgres_connections_time_out(monkeypatch):
+    captured = {}
+    monkeypatch.setattr("app.db.create_engine", lambda url, **kwargs: captured.update(kwargs))
+    make_engine("postgresql+psycopg://kurz:kurz@db:5432/kurz", attempt_timeout_seconds=3)
+    assert captured["connect_args"] == {"connect_timeout": 3}
