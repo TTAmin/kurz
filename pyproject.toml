@@ -17,6 +17,7 @@ ignore = ["B008"]  # FastAPI's Depends() in argument defaults is the intended pa
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "-q"
 
 [tool.coverage.run]
