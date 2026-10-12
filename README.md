@@ -146,7 +146,11 @@ following the twelve-factor model.
 - **Scans gate on what can be fixed.** The pipeline fails on critical image vulnerabilities
   that have a fix, and on any HIGH or CRITICAL misconfiguration in the Dockerfile, the Helm
   chart or the Terraform code. Accepted exceptions live in [`.trivyignore`](.trivyignore),
-  each with its reason. Image findings from HIGH up are reported to GitHub code scanning.
+  each with its reason. Image findings from HIGH up that have a fix are reported to GitHub
+  code scanning; unfixed ones in the Debian base image appear there once Debian ships a fix.
+- **No package manager in the runtime image.** pip is removed from the final stage: the app
+  never needs it, an attacker cannot install tools with it, and the libraries pip vendors
+  (urllib3, msgpack, pkg_resources) were the image's only fixable HIGH findings.
 - **Every action is pinned by commit SHA**, not by tag, with the version as a comment:
   a tag can be re-pointed to other code, as happened to `trivy-action`'s tags in March 2026,
   and these actions run with access to the repository's secrets. Dependabot keeps the SHAs
