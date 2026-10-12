@@ -86,6 +86,14 @@ scripts/smoke-test.sh http://localhost:8080
 ```
 
 Or use the published image instead of building: `helm install kurz deploy/helm/kurz --wait`.
+Every published image is signed by the CI workflow on `main` (keyless, Sigstore). Check that
+an image really came from there before running it:
+
+```bash
+cosign verify ghcr.io/ttamin/kurz:latest \
+  --certificate-identity https://github.com/TTAmin/kurz/.github/workflows/ci.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
 
 ### AWS (optional)
 
