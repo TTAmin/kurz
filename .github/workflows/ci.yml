@@ -210,15 +210,21 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Tag and push
+      # Push under the commit's tag only. `latest` moves after the signature is
+      # verified, so it never points at an unsigned image.
+      - name: Push commit tag
         id: push
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/kurz"
-          for tag in "sha-${GITHUB_SHA::7}" latest; do
-            docker tag "$LOCAL_IMAGE" "$image:$tag"
-            docker push "$image:$tag"
-          done
-          echo "ref=$(docker inspect --format='{{index .RepoDigests 0}}' "$image:latest")" >> "$GITHUB_OUTPUT"
+          tag="$image:sha-${GITHUB_SHA::7}"
+          docker tag "$LOCAL_IMAGE" "$tag"
+          docker push "$tag"
+          # Ask the registry for the digest, not the local daemon: on the ubuntu-26.04
+          # runners `docker inspect` listed the local name (kurz@sha256:...) first,
+          # and cosign went looking for it on Docker Hub.
+          digest=$(docker buildx imagetools inspect "$tag" --format '{{json .Manifest}}' | jq -r .digest)
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "ref=$image@$digest" >> "$GITHUB_OUTPUT"
       - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
       - name: Sign image (keyless, Sigstore)
         run: cosign sign --yes "${{ steps.push.outputs.ref }}"
@@ -231,3 +237,7 @@ jobs:
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             > /dev/null
           echo "signature verified for ${{ steps.push.outputs.ref }}"
+      - name: Move latest to the verified image
+        run: |
+          docker buildx imagetools create --tag "${{ steps.push.outputs.image }}:latest" "${{ steps.push.outputs.ref }}"
+          echo "latest -> ${{ steps.push.outputs.ref }}"
