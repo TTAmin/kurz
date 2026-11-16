@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # --- build stage: install dependencies into a virtualenv -----------------------
-FROM python:3.14-slim AS build
+FROM python:3.15-slim AS build
 
 ENV PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
@@ -12,7 +12,7 @@ RUN /venv/bin/pip install -r requirements.txt \
     && /venv/bin/pip uninstall -y pip
 
 # --- runtime stage: only the virtualenv and the app, no build tooling ----------
-FROM python:3.14-slim
+FROM python:3.15-slim
 
 ENV PATH="/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
